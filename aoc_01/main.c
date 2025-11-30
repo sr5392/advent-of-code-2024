@@ -92,7 +92,6 @@ int part_1(void) {
     FILE* fp = fopen("../input.txt", "rb");
     if (!fp) {
         perror("Unable to open file");
-        return 1;
     }
     read_lists(fp, list_1, list_2);
     fclose(fp);
@@ -120,7 +119,6 @@ int part_2(void) {
     FILE* fp = fopen("../input.txt", "rb");
     if (!fp) {
         perror("Unable to open file");
-        return 1;
     }
     read_lists(fp, list_1, list_2);
     fclose(fp);

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #define LIST_SIZE 1000
+#define INPUT_FILE_PATH "./input.txt"
 
 int peek(FILE* fp) {
     const int c = fgetc(fp);
@@ -89,7 +90,7 @@ int get_list_distance(int* list_1, int* list_2) {
 int part_1(void) {
     int list_1[LIST_SIZE] = {0};
     int list_2[LIST_SIZE] = {0};
-    FILE* fp = fopen("../input.txt", "rb");
+    FILE* fp = fopen(INPUT_FILE_PATH, "rb");
     if (!fp) {
         perror("Unable to open file");
     }
@@ -116,7 +117,7 @@ int get_similarity_score(const int* list_1, const int* list_2) {
 int part_2(void) {
     int list_1[LIST_SIZE] = {0};
     int list_2[LIST_SIZE] = {0};
-    FILE* fp = fopen("../input.txt", "rb");
+    FILE* fp = fopen(INPUT_FILE_PATH, "rb");
     if (!fp) {
         perror("Unable to open file");
     }

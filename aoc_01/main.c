@@ -1,9 +1,11 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-#define LIST_SIZE 1000
 #define INPUT_FILE_PATH "./input.txt"
+
+static size_t list_size = 1000;
+static size_t list_count = 0;
 
 int peek(FILE* fp) {
     const int c = fgetc(fp);
@@ -15,97 +17,133 @@ int advance(FILE* fp) {
     return fgetc(fp);
 }
 
-void read_lists(FILE* fp, int* list_1, int* list_2) {
-    size_t list_index = 0;
-    char buffer[8] = {0};
+int number(FILE* fp) {
+    size_t buffer_size = 16;
+    char* buffer = (char*) malloc(buffer_size * sizeof(char));
+    if (!buffer) {
+        printf("Error allocating memory for buffer");
+        exit(EXIT_FAILURE);
+    }
     size_t buffer_index = 0;
-
-    while (true) {
-        const int c = advance(fp);
-        if (c == EOF) return;
-
-        if (list_index >= LIST_SIZE) {
-            printf("List size exceeded");
-            exit(EXIT_FAILURE);
+    while (isdigit(peek(fp))) {
+        if (buffer_index >= buffer_size - 1) {
+            buffer_size *= 2;
+            buffer = (char*) realloc(buffer, buffer_size * sizeof(char));
+            if (!buffer) {
+                printf("Error reallocating memory for buffer");
+                exit(EXIT_FAILURE);
+            }
         }
+        const char c = (char) advance(fp);
+        buffer[buffer_index] = c;
+        buffer[buffer_index + 1] = '\0';
+        ++buffer_index;
+    }
 
+    const int num = atoi(buffer);
+    free(buffer);
+    return num;
+}
+
+void read_lists(int** list_1, int** list_2) {
+    list_count = 0;
+    FILE* fp = fopen(INPUT_FILE_PATH, "rb");
+    if (!fp) {
+        perror("Unable to open file");
+        exit(EXIT_FAILURE);
+    }
+    int number_count = 0;
+    while (true) {
+        const int c = peek(fp);
         switch (c) {
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-            case '0':
-                buffer[buffer_index] = (char) c;
-                ++buffer_index;
-
-                if (peek(fp) == '\t' || peek(fp) == ' ')
-                    list_1[list_index] = atoi(buffer);
-
-                if (peek(fp) == '\r')
-                    list_2[list_index] = atoi(buffer);
-                break;
             case ' ':
             case '\t':
-                memset(buffer, 0, sizeof(buffer));
-                buffer_index = 0;
-                break;
             case '\r':
+                advance(fp);
                 break;
-            case '\n':
-                memset(buffer, 0, sizeof(buffer));
-                buffer_index = 0;
-                ++list_index;
+            case EOF:
+                if (feof(fp)) {
+                    fclose(fp);
+                    return;
+                }
+                if (ferror(fp)) {
+                    printf("Error reading file");
+                    exit(EXIT_FAILURE);
+                }
                 break;
             default:
-                printf("%d: ", c);
+                if (isdigit(c) && number_count < 2) {
+                    if (list_count >= list_size) {
+                        list_size *= 2;
+                        *list_1 = (int*) realloc(*list_1, list_size * sizeof(int));
+                        *list_2 = (int*) realloc(*list_2, list_size * sizeof(int));
+                        if (!*list_1 || !*list_2) {
+                            printf("Error reallocating memory for lists");
+                            exit(EXIT_FAILURE);
+                        }
+                        for (size_t i = list_count; i < list_size; ++i) {
+                            (*list_1)[i] = 0;
+                            (*list_2)[i] = 0;
+                        }
+                    }
+                    const int num = number(fp);
+                    if (number_count == 0) {
+                        (*list_1)[list_count] = num;
+                        ++number_count;
+                        continue;
+                    }
+                    if (number_count == 1) {
+                        (*list_2)[list_count] = num;
+                        ++number_count;
+                    }
+                    continue;
+                }
+                if (c == '\n' && number_count == 2) {
+                    ++list_count;
+                    number_count = 0;
+                    advance(fp);
+                    continue;
+                }
                 printf("Invalid list format");
                 exit(EXIT_FAILURE);
         }
     }
 }
 
-int cmp(const void* a, const void* b) {
+int compare(const void* a, const void* b) {
     return *((int*) a) - *((int*) b);
 }
 
 void sort_list_ascending(int* list) {
-    qsort(list, LIST_SIZE, sizeof(int), cmp);
+    qsort(list, list_count, sizeof(int), compare);
 }
 
 int get_list_distance(int* list_1, int* list_2) {
     sort_list_ascending(list_1);
     sort_list_ascending(list_2);
     int list_distance = 0;
-    for (int i = 0; i < LIST_SIZE; ++i) {
+    for (size_t i = 0; i < list_count; ++i) {
         list_distance += abs(list_1[i] - list_2[i]);
     }
     return list_distance;
 }
 
 int part_1(void) {
-    int list_1[LIST_SIZE] = {0};
-    int list_2[LIST_SIZE] = {0};
-    FILE* fp = fopen(INPUT_FILE_PATH, "rb");
-    if (!fp) {
-        perror("Unable to open file");
-        exit(EXIT_FAILURE);
-    }
-    read_lists(fp, list_1, list_2);
-    fclose(fp);
-    return get_list_distance(list_1, list_2);
+    int* list_1 = (int*) calloc(list_size, sizeof(int));
+    int* list_2 = (int*) calloc(list_size, sizeof(int));
+    read_lists(&list_1, &list_2);
+    const int list_distance = get_list_distance(list_1, list_2);
+    free(list_1);
+    free(list_2);
+    return list_distance;
 }
 
 int get_similarity_score(const int* list_1, const int* list_2) {
     int similarity_score = 0;
-    for (int i = 0; i < LIST_SIZE; ++i) {
+    for (size_t i = 0; i < list_count; ++i) {
         const int location_id = list_1[i];
         int similarity_count = 0;
-        for (int j = 0; j < LIST_SIZE; ++j) {
+        for (size_t j = 0; j < list_count; ++j) {
             if (list_2[j] == location_id) {
                 ++similarity_count;
             }
@@ -116,16 +154,13 @@ int get_similarity_score(const int* list_1, const int* list_2) {
 }
 
 int part_2(void) {
-    int list_1[LIST_SIZE] = {0};
-    int list_2[LIST_SIZE] = {0};
-    FILE* fp = fopen(INPUT_FILE_PATH, "rb");
-    if (!fp) {
-        perror("Unable to open file");
-        exit(EXIT_FAILURE);
-    }
-    read_lists(fp, list_1, list_2);
-    fclose(fp);
-    return get_similarity_score(list_1, list_2);
+    int* list_1 = (int*) calloc(list_size, sizeof(int));
+    int* list_2 = (int*) calloc(list_size, sizeof(int));
+    read_lists(&list_1, &list_2);
+    int similarity_score = get_similarity_score(list_1, list_2);
+    free(list_1);
+    free(list_2);
+    return similarity_score;
 }
 
 int main(void) {

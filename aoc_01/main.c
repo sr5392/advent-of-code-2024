@@ -93,6 +93,7 @@ int part_1(void) {
     FILE* fp = fopen(INPUT_FILE_PATH, "rb");
     if (!fp) {
         perror("Unable to open file");
+        exit(EXIT_FAILURE);
     }
     read_lists(fp, list_1, list_2);
     fclose(fp);
@@ -120,6 +121,7 @@ int part_2(void) {
     FILE* fp = fopen(INPUT_FILE_PATH, "rb");
     if (!fp) {
         perror("Unable to open file");
+        exit(EXIT_FAILURE);
     }
     read_lists(fp, list_1, list_2);
     fclose(fp);

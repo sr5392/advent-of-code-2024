@@ -19,8 +19,9 @@ int advance(FILE* fp) {
 
 int number(FILE* fp) {
     size_t buffer_size = 16;
-    char* buffer = (char*) malloc(buffer_size * sizeof(char));
+    char* buffer = malloc(buffer_size);
     if (!buffer) {
+        fclose(fp);
         printf("Error allocating memory for buffer");
         exit(EXIT_FAILURE);
     }
@@ -28,18 +29,20 @@ int number(FILE* fp) {
     while (isdigit(peek(fp))) {
         if (buffer_index >= buffer_size - 1) {
             buffer_size *= 2;
-            buffer = (char*) realloc(buffer, buffer_size * sizeof(char));
-            if (!buffer) {
+            char* tmpBuffer = realloc(buffer, buffer_size);
+            if (!tmpBuffer) {
+                free(buffer);
+                fclose(fp);
                 printf("Error reallocating memory for buffer");
                 exit(EXIT_FAILURE);
             }
+            buffer = tmpBuffer;
         }
         const char c = (char) advance(fp);
         buffer[buffer_index] = c;
-        buffer[buffer_index + 1] = '\0';
         ++buffer_index;
     }
-
+    buffer[buffer_index] = '\0';
     const int num = atoi(buffer);
     free(buffer);
     return num;
@@ -49,6 +52,8 @@ void read_lists(int** list_1, int** list_2) {
     list_count = 0;
     FILE* fp = fopen(INPUT_FILE_PATH, "rb");
     if (!fp) {
+        free(*list_1);
+        free(*list_2);
         perror("Unable to open file");
         exit(EXIT_FAILURE);
     }
@@ -67,6 +72,9 @@ void read_lists(int** list_1, int** list_2) {
                     return;
                 }
                 if (ferror(fp)) {
+                    free(*list_1);
+                    free(*list_2);
+                    fclose(fp);
                     printf("Error reading file");
                     exit(EXIT_FAILURE);
                 }
@@ -75,12 +83,24 @@ void read_lists(int** list_1, int** list_2) {
                 if (isdigit(c) && number_count < 2) {
                     if (list_count >= list_size) {
                         list_size *= 2;
-                        *list_1 = (int*) realloc(*list_1, list_size * sizeof(int));
-                        *list_2 = (int*) realloc(*list_2, list_size * sizeof(int));
-                        if (!*list_1 || !*list_2) {
-                            printf("Error reallocating memory for lists");
+                        int* tmp_list_1 = realloc(*list_1, list_size * sizeof(int));
+                        if (!tmp_list_1) {
+                            free(*list_1);
+                            free(*list_2);
+                            fclose(fp);
+                            printf("Error reallocating memory for list 1");
                             exit(EXIT_FAILURE);
                         }
+                        *list_1 = tmp_list_1;
+                        int* tmp_list_2 = realloc(*list_2, list_size * sizeof(int));
+                        if (!tmp_list_2) {
+                            free(*list_1);
+                            free(*list_2);
+                            fclose(fp);
+                            printf("Error reallocating memory for list 2");
+                            exit(EXIT_FAILURE);
+                        }
+                        *list_2 = tmp_list_2;
                         for (size_t i = list_count; i < list_size; ++i) {
                             (*list_1)[i] = 0;
                             (*list_2)[i] = 0;
@@ -104,6 +124,9 @@ void read_lists(int** list_1, int** list_2) {
                     advance(fp);
                     continue;
                 }
+                free(*list_1);
+                free(*list_2);
+                fclose(fp);
                 printf("Invalid list format");
                 exit(EXIT_FAILURE);
         }
@@ -129,8 +152,17 @@ int get_list_distance(int* list_1, int* list_2) {
 }
 
 int part_1(void) {
-    int* list_1 = (int*) calloc(list_size, sizeof(int));
-    int* list_2 = (int*) calloc(list_size, sizeof(int));
+    int* list_1 = calloc(list_size, sizeof(int));
+    if (!list_1) {
+        printf("Error allocating memory for list 1");
+        exit(EXIT_FAILURE);
+    }
+    int* list_2 = calloc(list_size, sizeof(int));
+    if (!list_2) {
+        free(list_1);
+        printf("Error allocating memory for list 2");
+        exit(EXIT_FAILURE);
+    }
     read_lists(&list_1, &list_2);
     const int list_distance = get_list_distance(list_1, list_2);
     free(list_1);
@@ -154,10 +186,19 @@ int get_similarity_score(const int* list_1, const int* list_2) {
 }
 
 int part_2(void) {
-    int* list_1 = (int*) calloc(list_size, sizeof(int));
-    int* list_2 = (int*) calloc(list_size, sizeof(int));
+    int* list_1 = calloc(list_size, sizeof(int));
+    if (!list_1) {
+        printf("Error allocating memory for list 1");
+        exit(EXIT_FAILURE);
+    }
+    int* list_2 = calloc(list_size, sizeof(int));
+    if (!list_2) {
+        free(list_1);
+        printf("Error allocating memory for list 2");
+        exit(EXIT_FAILURE);
+    }
     read_lists(&list_1, &list_2);
-    int similarity_score = get_similarity_score(list_1, list_2);
+    const int similarity_score = get_similarity_score(list_1, list_2);
     free(list_1);
     free(list_2);
     return similarity_score;
